@@ -165,7 +165,7 @@ export class Visual implements IVisual {
             const countryData = data.find((item: any) => item.name === d.properties.ADMIN);
             if (countryData) {
                 d.properties.orderIndex = countryData.orderIndex;
-                d.properties.value = this.dataColors[countryData.orderIndex]
+                d.properties.value = this.dataColors[countryData.orderIndex] ?? 0
                 this.dataMeasuresDisplayName.forEach((element, index) => {
                     d.properties["tooltip" + index] = element;
                 });
