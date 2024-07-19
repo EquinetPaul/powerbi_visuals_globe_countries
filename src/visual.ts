@@ -52,6 +52,9 @@ export class Visual implements IVisual {
 
     private dataMeasuresDisplayName: Array<string>;
     private dataMeasuresValue: any;
+    private dataColors: any;
+
+    private colorScale: any;
 
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
@@ -59,6 +62,7 @@ export class Visual implements IVisual {
 
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
+        this.dataColors = [];
 
         // Initialize Globe
         const earthNightBase64 = imagesJson['earth-night'];
@@ -80,18 +84,23 @@ export class Visual implements IVisual {
 
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
+        this.dataColors = [];
 
         // Get category data (country names or codes)
         const dataView = options.dataViews[0];
-
-        console.log(dataView)
+        
         if (dataView && dataView.categorical && dataView.categorical.categories) {
             const categories = dataView.categorical.categories[0].values;
-            const measures = dataView.categorical.values ? dataView.categorical.values[0].values : [];
+        
 
             dataView.categorical.values.forEach((element) => {
-                this.dataMeasuresDisplayName.push(element.source.displayName);
-                this.dataMeasuresValue.push(element.values);
+                if (element.source.roles.measure) {
+                    this.dataMeasuresDisplayName.push(element.source.displayName);
+                    this.dataMeasuresValue.push(element.values);
+                }
+                else if (element.source.roles.color) {
+                    this.dataColors = element.values
+                }
             });
 
             // Filter the countries data based on categories
@@ -100,7 +109,6 @@ export class Visual implements IVisual {
             // Map category (country name) to measure data
             const countryData = categories.map((category: any, index: number) => ({
                 name: category,
-                value: measures[index] !== undefined ? measures[index] : 0,
                 orderIndex: index
             }));
 
@@ -115,16 +123,15 @@ export class Visual implements IVisual {
     }
 
     private setupGlobe(countries: any) {
-        const colorScale = d3.scaleSequentialSqrt(d3.interpolateYlOrRd);
-        const getVal = (feat: any) => feat.properties.GDP_MD_EST / Math.max(1e5, feat.properties.POP_EST);
-
-        const maxVal = Math.max(...countries.features.map(getVal));
-        colorScale.domain([0, maxVal]);
-
+        this.determineColorScale();
+    
         this.globe
             .polygonsData(countries.features.filter((d: any) => d.properties.ISO_A2 !== 'AQ'))
             .polygonAltitude(0.06)
-            .polygonCapColor("white")
+            .polygonCapColor((d: any) => {
+                const value = d.properties.value;
+                return this.colorScale(value);
+            })
             .polygonSideColor(() => 'rgba(0, 100, 0, 0.15)')
             .polygonStrokeColor(() => '#111')
             .polygonLabel(({ properties: d }: any) => {
@@ -138,43 +145,34 @@ export class Visual implements IVisual {
                     }
                 }
                 return `
-                    <b>${d.ADMIN}:</b> <br />
-                    Value: ${d.value !== undefined ? d.value : 'N/A'} <br />
+                    <b>${d.ADMIN}</b> <br />
                     ${tooltips}
                 `;
             })
             .onPolygonHover((hoverD: any) => this.globe
                 .polygonAltitude((d: any) => d === hoverD ? 0.12 : 0.06)
-                .polygonCapColor((d: any) => d === hoverD ? 'white' : 'white')
+                .polygonCapColor((d: any) => d === hoverD ? 'white' : this.colorScale(d.properties.value))
             )
             .polygonsTransitionDuration(500);
-    }
-
-    private filterCountriesByCategories(categories: any) {
-        return {
-            ...this.originalCountriesData,
-            features: this.originalCountriesData.features.filter((feature: any) =>
-                categories.includes(feature.properties.ADMIN)
-            )
-        };
-    }
+    }    
 
     private updateChoropleth(filteredCountries: any, data: any) {
         const colorScale = d3.scaleSequentialSqrt(d3.interpolateYlOrRd);
-        const maxVal = Math.max(...data.map((d: any) => d.value));
-        colorScale.domain([0, maxVal]);
+
+        const isNumericData = this.isNumeric(this.dataColors[0]);
 
         filteredCountries.features.forEach((d: any) => {
             const countryData = data.find((item: any) => item.name === d.properties.ADMIN);
             if (countryData) {
-                d.properties.value = countryData.value;
                 d.properties.orderIndex = countryData.orderIndex;
+                d.properties.value = this.dataColors[countryData.orderIndex]
                 this.dataMeasuresDisplayName.forEach((element, index) => {
                     d.properties["tooltip" + index] = element;
                 });
             }
         });
 
+        // PARTIE A ADAPTER POUR UTILISER this.colorData()
         this.globe
             .polygonsData(filteredCountries.features)
             .polygonCapColor((feat: any) => {
@@ -196,6 +194,32 @@ export class Visual implements IVisual {
         this.globe.pointOfView({ lat: 0, lng: 0, altitude: 2.5 });
     }
 
+    private filterCountriesByCategories(categories: any) {
+        return {
+            ...this.originalCountriesData,
+            features: this.originalCountriesData.features.filter((feature: any) =>
+                categories.includes(feature.properties.ADMIN)
+            )
+        };
+    }
+
+    private determineColorScale() {
+        if (this.isNumeric(this.dataColors[0])) {
+            const minVal = Math.min(...this.dataColors);
+            const maxVal = Math.max(...this.dataColors);
+            this.colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
+                .domain([minVal, maxVal]);
+        } else {
+            const uniqueCategories = Array.from(new Set(this.dataColors)) as string[];
+            this.colorScale = d3.scaleOrdinal(d3.schemeCategory10)
+                .domain(uniqueCategories);
+        }
+    }
+    
+    private isNumeric(value: any): boolean {
+        return !isNaN(value) && isFinite(value);
+    }
+
     /**
      * Returns properties pane formatting model content hierarchies, properties and latest formatting values, Then populate properties pane.
      * This method is called once every time we open properties pane or when the user edit any format property.
@@ -203,5 +227,8 @@ export class Visual implements IVisual {
     public getFormattingModel(): powerbi.visuals.FormattingModel {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
+
+    
+    
 }
 
