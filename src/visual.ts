@@ -57,8 +57,8 @@ export class Visual implements IVisual {
         this.formattingSettingsService = new FormattingSettingsService();
         this.target = options.element;
 
-        this.dataMeasuresDisplayName = []
-        this.dataMeasuresValue = []
+        this.dataMeasuresDisplayName = [];
+        this.dataMeasuresValue = [];
 
         // Initialize Globe
         const earthNightBase64 = imagesJson['earth-night'];
@@ -71,24 +71,27 @@ export class Visual implements IVisual {
         // Store the original GeoJSON data
         this.originalCountriesData = countriesGeoJson;
 
-
+        // Add resize event listener
+        window.addEventListener('resize', () => this.onResize());
     }
 
     public update(options: VisualUpdateOptions) {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
 
-        this.dataMeasuresDisplayName = []
-        this.dataMeasuresValue = []
+        this.dataMeasuresDisplayName = [];
+        this.dataMeasuresValue = [];
 
         // Get category data (country names or codes)
         const dataView = options.dataViews[0];
+
+        console.log(dataView)
         if (dataView && dataView.categorical && dataView.categorical.categories) {
             const categories = dataView.categorical.categories[0].values;
             const measures = dataView.categorical.values ? dataView.categorical.values[0].values : [];
 
             dataView.categorical.values.forEach((element) => {
-                this.dataMeasuresDisplayName.push(element.source.displayName)
-                this.dataMeasuresValue.push(element.values)
+                this.dataMeasuresDisplayName.push(element.source.displayName);
+                this.dataMeasuresValue.push(element.values);
             });
 
             // Filter the countries data based on categories
@@ -105,9 +108,11 @@ export class Visual implements IVisual {
             this.setupGlobe(this.originalCountriesData);
 
             this.updateChoropleth(filteredCountries, countryData);
+
+            // Ensure the globe is centered after update
+            this.centerGlobe();
         }
     }
-
 
     private setupGlobe(countries: any) {
         const colorScale = d3.scaleSequentialSqrt(d3.interpolateYlOrRd);
@@ -126,12 +131,11 @@ export class Visual implements IVisual {
                 let tooltips = '';
                 let index = 0;
                 for (const key in d) {
-                    const measureValue = this.dataMeasuresValue[index][d.orderIndex]
+                    const measureValue = this.dataMeasuresValue[index][d.orderIndex];
                     if (key.startsWith('tooltip')) {
                         tooltips += `${d[key]}: ${measureValue}<br />`;
                         index++;
                     }
-                    
                 }
                 return `
                     <b>${d.ADMIN}:</b> <br />
@@ -145,8 +149,6 @@ export class Visual implements IVisual {
             )
             .polygonsTransitionDuration(500);
     }
-
-
 
     private filterCountriesByCategories(categories: any) {
         return {
@@ -166,9 +168,9 @@ export class Visual implements IVisual {
             const countryData = data.find((item: any) => item.name === d.properties.ADMIN);
             if (countryData) {
                 d.properties.value = countryData.value;
-                d.properties.orderIndex = countryData.orderIndex
+                d.properties.orderIndex = countryData.orderIndex;
                 this.dataMeasuresDisplayName.forEach((element, index) => {
-                    d.properties["tooltip" + index] = element
+                    d.properties["tooltip" + index] = element;
                 });
             }
         });
@@ -181,7 +183,18 @@ export class Visual implements IVisual {
             });
     }
 
+    private onResize() {
+        this.centerGlobe();
+    }
 
+    private centerGlobe() {
+        const boundingRect = this.target.getBoundingClientRect();
+        const centerX = boundingRect.width / 2;
+        const centerY = boundingRect.height / 2;
+
+        this.globe.width(boundingRect.width).height(boundingRect.height);
+        this.globe.pointOfView({ lat: 0, lng: 0, altitude: 2.5 });
+    }
 
     /**
      * Returns properties pane formatting model content hierarchies, properties and latest formatting values, Then populate properties pane.
@@ -191,3 +204,4 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 }
+
