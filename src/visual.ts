@@ -59,6 +59,8 @@ export class Visual implements IVisual {
 
     private earthDisplay: any;
 
+    private legendContainer: HTMLElement;
+
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
         this.target = options.element;
@@ -84,25 +86,39 @@ export class Visual implements IVisual {
 
         // Add resize event listener
         window.addEventListener('resize', () => this.onResize());
+
+        this.createLegendContainer();
+    }
+
+    private createLegendContainer() {
+        this.legendContainer = document.createElement('div');
+        this.legendContainer.style.position = 'absolute';
+        this.legendContainer.style.top = '10px';
+        this.legendContainer.style.left = '10px';
+        this.legendContainer.style.backgroundColor = 'rgba(255, 255, 255, 0.8)';
+        this.legendContainer.style.padding = '10px';
+        this.legendContainer.style.borderRadius = '5px';
+        this.legendContainer.style.display = 'none';  // Hidden by default
+        this.target.appendChild(this.legendContainer);
     }
 
     public update(options: VisualUpdateOptions) {
         this.formattingSettings = this.formattingSettingsService.populateFormattingSettingsModel(VisualFormattingSettingsModel, options.dataViews[0]);
-
+    
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
         this.dataColors = [];
         this.dataCategories = [];
-
+    
         // Get category data (country names or codes)
         const dataView = options.dataViews[0];
-
+    
         // Transform Data
         if (dataView && dataView.categorical && dataView.categorical.categories) {
-
+    
             const categories = dataView.categorical.categories[0].values;
             this.dataCategories = categories;
-
+    
             if (dataView.categorical.values) {
                 dataView.categorical.values.forEach((element) => {
                     if (element.source.roles.measure) {
@@ -113,28 +129,102 @@ export class Visual implements IVisual {
                     }
                 });
             }
-
+    
             // Filter the countries data based on categories
             const filteredCountries = this.filterCountriesByCategories(categories);
-
+    
             // Map category (country name) to measure data
             const countryData = categories.map((category: any, index: number) => ({
                 name: category,
                 orderIndex: index
             }));
-
+    
             // Setup the globe with the GeoJSON data
             this.setupGlobe(this.originalCountriesData);
-
+    
             this.updateChoropleth(filteredCountries, countryData);
-
+    
             // Ensure the globe is centered after update
             this.centerGlobe();
+    
+            // Update legend if color data is present
+            if (this.dataColors.length > 0) {
+                this.updateLegend();
+            } else {
+                this.legendContainer.style.display = 'none';
+            }
         } else {
             console.error("Country code data is missing.");
             this.clearGlobe();
         }
     }
+
+    private updateLegend() {
+        // Clear existing legend items
+        this.legendContainer.innerHTML = '';
+    
+        // Create legend items
+        if (this.isNumeric(this.dataColors[0])) {
+            const colorScale = d3.scaleSequential(d3.interpolateYlOrRd)
+                .domain([Math.min(...this.dataColors), Math.max(...this.dataColors)]);
+    
+            // Assuming numerical color scale legend
+            const steps = 5;
+            const min = Math.min(...this.dataColors);
+            const max = Math.max(...this.dataColors);
+            const stepSize = (max - min) / steps;
+    
+            for (let i = 0; i <= steps; i++) {
+                const value = min + i * stepSize;
+                const color = colorScale(value);
+    
+                const legendItem = document.createElement('div');
+                legendItem.style.display = 'flex';
+                legendItem.style.alignItems = 'center';
+    
+                const colorBox = document.createElement('div');
+                colorBox.style.width = '20px';
+                colorBox.style.height = '20px';
+                colorBox.style.backgroundColor = color;
+                colorBox.style.marginRight = '10px';
+    
+                const label = document.createElement('span');
+                label.innerText = value.toFixed(2);
+    
+                legendItem.appendChild(colorBox);
+                legendItem.appendChild(label);
+                this.legendContainer.appendChild(legendItem);
+            }
+        } else {
+            const uniqueCategories = Array.from(new Set(this.dataColors)) as string[];
+    
+            uniqueCategories.forEach((category, index) => {
+                const color = this.colorScale(category);
+    
+                const legendItem = document.createElement('div');
+                legendItem.style.display = 'flex';
+                legendItem.style.alignItems = 'center';
+    
+                const colorBox = document.createElement('div');
+                colorBox.style.width = '20px';
+                colorBox.style.height = '20px';
+                colorBox.style.backgroundColor = color;
+                colorBox.style.marginRight = '10px';
+    
+                const label = document.createElement('span');
+                label.innerText = this.dataMeasuresDisplayName[index] || category;
+    
+                legendItem.appendChild(colorBox);
+                legendItem.appendChild(label);
+                this.legendContainer.appendChild(legendItem);
+            });
+        }
+    
+        // Show the legend
+        this.legendContainer.style.display = 'block';
+    }
+    
+    
 
     private setupGlobe(countries: any) {
         this.determineColorScale();

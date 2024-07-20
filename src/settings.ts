@@ -46,7 +46,7 @@ class DataPointCardSettings extends FormattingSettingsCard {
     nightSkyBackground = new formattingSettings.ToggleSwitch({
         name: "nightSkyBackground",
         displayName: "Night Sky Background",
-        value: true
+        value: false
     });
 
     countriesAltitude = new formattingSettings.NumUpDown({
@@ -75,8 +75,8 @@ class DataPointCardSettings extends FormattingSettingsCard {
     displayName: string = "Globe";
     slices: Array<FormattingSettingsSlice> = [
         this.position,
-        this.backgroundColor, 
-        this.nightSkyBackground, 
+        this.backgroundColor,
+        this.nightSkyBackground,
         this.countriesAltitude];
 }
 

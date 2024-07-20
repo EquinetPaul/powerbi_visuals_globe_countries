@@ -96,8 +96,20 @@
                         }
                     ]
                 }
-            }
+            },
+            "conditions": [
+                {
+                    "category": {
+                        "max": 1
+                    },
+                    "color": {
+                        "max": 1
+                    }
+                }
+            ]
         }
     ],
-    "privileges": []
+    "privileges": [],
+    "supportsLandingPage": true,
+    "supportsEmptyDataView": true
 }
