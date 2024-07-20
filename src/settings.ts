@@ -27,6 +27,7 @@
 "use strict";
 
 import { formattingSettings } from "powerbi-visuals-utils-formattingmodel";
+import powerbiVisualsApi from "powerbi-visuals-api";
 
 import FormattingSettingsCard = formattingSettings.SimpleCard;
 import FormattingSettingsSlice = formattingSettings.Slice;
@@ -36,39 +37,47 @@ import FormattingSettingsModel = formattingSettings.Model;
  * Data Point Formatting Card
  */
 class DataPointCardSettings extends FormattingSettingsCard {
-    defaultColor = new formattingSettings.ColorPicker({
-        name: "defaultColor",
-        displayName: "Default color",
-        value: { value: "" }
+    backgroundColor = new formattingSettings.ColorPicker({
+        name: "backgroundColor",
+        displayName: "Background color",
+        value: { value: "#FFFFFF" }
     });
 
-    showAllDataPoints = new formattingSettings.ToggleSwitch({
-        name: "showAllDataPoints",
-        displayName: "Show all",
+    nightSkyBackground = new formattingSettings.ToggleSwitch({
+        name: "nightSkyBackground",
+        displayName: "Night Sky Background",
         value: true
     });
 
-    fill = new formattingSettings.ColorPicker({
-        name: "fill",
-        displayName: "Fill",
-        value: { value: "" }
+    countriesAltitude = new formattingSettings.NumUpDown({
+        name: "countriesAltitude",
+        displayName: "Countries Altitude",
+        value: 6,
+        options: {
+            minValue: {
+                type: powerbiVisualsApi.visuals.ValidatorType.Min,
+                value: 1,
+            },
+            maxValue: {
+                type: powerbiVisualsApi.visuals.ValidatorType.Max,
+                value: 20,
+            }
+        }
     });
 
-    fillRule = new formattingSettings.ColorPicker({
-        name: "fillRule",
-        displayName: "Color saturation",
-        value: { value: "" }
-    });
-
-    fontSize = new formattingSettings.NumUpDown({
-        name: "fontSize",
-        displayName: "Text Size",
-        value: 12
+    position = new formattingSettings.AutoDropdown({
+        name: "position",
+        displayName: "Position",
+        value: "earth-day"
     });
 
     name: string = "dataPoint";
-    displayName: string = "Data colors";
-    slices: Array<FormattingSettingsSlice> = [this.defaultColor, this.showAllDataPoints, this.fill, this.fillRule, this.fontSize];
+    displayName: string = "Globe";
+    slices: Array<FormattingSettingsSlice> = [
+        this.position,
+        this.backgroundColor, 
+        this.nightSkyBackground, 
+        this.countriesAltitude];
 }
 
 /**

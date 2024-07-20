@@ -19,7 +19,7 @@
     "objects": {
         "dataPoint": {
             "properties": {
-                "defaultColor": {
+                "backgroundColor": {
                     "type": {
                         "fill": {
                             "solid": {
@@ -28,7 +28,7 @@
                         }
                     }
                 },
-                "showAllDataPoints": {
+                "nightSkyBackground": {
                     "type": {
                         "bool": true
                     }
@@ -47,11 +47,25 @@
                         "fill": {}
                     }
                 },
-                 "fontSize": {
+                "countriesAltitude": {
                     "type": {
                         "formatting": {
                             "fontSize": true
                         }
+                    }
+                },
+                "position": {
+                    "type": {
+                        "enumeration": [
+                            {
+                                "value": "earth-day",
+                                "displayName": "Day"
+                            },
+                            {
+                                "value": "earth-night",
+                                "displayName": "Night"
+                            }
+                        ]
                     }
                 }
             }
@@ -85,6 +99,5 @@
             }
         }
     ],
-    "privileges": [
-    ]
+    "privileges": []
 }

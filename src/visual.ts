@@ -57,6 +57,8 @@ export class Visual implements IVisual {
 
     private colorScale: any;
 
+    private earthDisplay: any;
+
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
         this.target = options.element;
@@ -67,10 +69,13 @@ export class Visual implements IVisual {
         this.dataCategories = [];
 
         // Initialize Globe
-        const earthNightBase64 = imagesJson['earth-night'];
-        const earthDayBase64 = imagesJson['earth-day'];
+        this.earthDisplay = {
+            "earth-day": imagesJson['earth-day'],
+            "earth-night": imagesJson['earth-night'],
+            "night-sky": imagesJson['night-sky']
+        }
         this.globe = Globe()(this.target)
-            .globeImageUrl(earthDayBase64)
+            .globeImageUrl(this.earthDisplay["earth-day"])
             .backgroundColor("#FFFFFF")
             .lineHoverPrecision(0);
 
@@ -94,7 +99,7 @@ export class Visual implements IVisual {
 
         // Transform Data
         if (dataView && dataView.categorical && dataView.categorical.categories) {
-            
+
             const categories = dataView.categorical.categories[0].values;
             this.dataCategories = categories;
 
@@ -136,7 +141,9 @@ export class Visual implements IVisual {
 
         this.globe
             .polygonsData(countries.features.filter((d: any) => d.properties.ISO_A2 !== 'AQ'))
-            .polygonAltitude(0.06)
+            .globeImageUrl(this.earthDisplay[this.formattingSettings.dataPointCard.position.value as string])
+            .backgroundColor(this.formattingSettings.dataPointCard.backgroundColor.value.value as string)
+            .polygonAltitude(this.formattingSettings.dataPointCard.countriesAltitude.value * 0.01)
             .polygonCapColor((d: any) => {
                 const value = d.properties.value ?? 0;
                 return this.colorScale(value);
@@ -145,10 +152,17 @@ export class Visual implements IVisual {
             .polygonStrokeColor(() => '#111')
             .polygonLabel(({ properties: d }: any) => this.createTooltip(d))
             .onPolygonHover((hoverD: any) => this.globe
-                .polygonAltitude((d: any) => d === hoverD ? 0.12 : 0.06)
+                .polygonAltitude((d: any) => d === hoverD ? this.formattingSettings.dataPointCard.countriesAltitude.value * 0.01 + 0.05 : this.formattingSettings.dataPointCard.countriesAltitude.value * 0.01)
                 .polygonCapColor((d: any) => d === hoverD ? 'white' : this.colorScale(d.properties.value))
             )
             .polygonsTransitionDuration(500);
+
+        if (this.formattingSettings.dataPointCard.nightSkyBackground.value) {
+            this.globe.backgroundImageUrl(this.earthDisplay["night-sky"]);
+        }
+        else {
+            this.globe.backgroundImageUrl("");
+        }
     }
 
     private updateChoropleth(filteredCountries: any, data: any) {
@@ -192,17 +206,18 @@ export class Visual implements IVisual {
                 const measureValue = (this.dataMeasuresValue[index] && this.dataMeasuresValue[index][d.orderIndex] !== undefined)
                     ? this.dataMeasuresValue[index][d.orderIndex]
                     : "";
-                if (key.startsWith('tooltip') && measureValue!=="") {
+                if (key.startsWith('tooltip') && measureValue !== "") {
                     tooltips += `${d[key]}: ${measureValue}<br />`;
                     index++;
                 }
             }
             return `
+            <div style="background-color:#585858; padding:5px; border-radius:2px; opacity:0.8">
                 <b>${d.ADMIN}</b> <br />
-                ${tooltips}
+                ${tooltips}</div>
             `;
         } else {
-            return `<b>${d.ADMIN}</b>`;
+            return `<div style="background-color:#585858; padding:5px; border-radius:2px; opacity:0.8"><b>${d.ADMIN}</b>`;
         }
     }
 
