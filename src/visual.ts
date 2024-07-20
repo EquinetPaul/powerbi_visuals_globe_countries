@@ -53,6 +53,7 @@ export class Visual implements IVisual {
     private dataMeasuresDisplayName: Array<string>;
     private dataMeasuresValue: any;
     private dataColors: any;
+    private dataCategories: any;
 
     private colorScale: any;
 
@@ -63,6 +64,7 @@ export class Visual implements IVisual {
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
         this.dataColors = [];
+        this.dataCategories = [];
 
         // Initialize Globe
         const earthNightBase64 = imagesJson['earth-night'];
@@ -85,23 +87,27 @@ export class Visual implements IVisual {
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
         this.dataColors = [];
+        this.dataCategories = [];
 
         // Get category data (country names or codes)
         const dataView = options.dataViews[0];
-        
-        if (dataView && dataView.categorical && dataView.categorical.categories) {
-            const categories = dataView.categorical.categories[0].values;
-        
 
-            dataView.categorical.values.forEach((element) => {
-                if (element.source.roles.measure) {
-                    this.dataMeasuresDisplayName.push(element.source.displayName);
-                    this.dataMeasuresValue.push(element.values);
-                }
-                else if (element.source.roles.color) {
-                    this.dataColors = element.values
-                }
-            });
+        // Transform Data
+        if (dataView && dataView.categorical && dataView.categorical.categories) {
+            
+            const categories = dataView.categorical.categories[0].values;
+            this.dataCategories = categories;
+
+            if (dataView.categorical.values) {
+                dataView.categorical.values.forEach((element) => {
+                    if (element.source.roles.measure) {
+                        this.dataMeasuresDisplayName.push(element.source.displayName);
+                        this.dataMeasuresValue.push(element.values);
+                    } else if (element.source.roles.color) {
+                        this.dataColors = element.values;
+                    }
+                });
+            }
 
             // Filter the countries data based on categories
             const filteredCountries = this.filterCountriesByCategories(categories);
@@ -119,66 +125,85 @@ export class Visual implements IVisual {
 
             // Ensure the globe is centered after update
             this.centerGlobe();
+        } else {
+            console.error("Country code data is missing.");
+            this.clearGlobe();
         }
     }
 
     private setupGlobe(countries: any) {
         this.determineColorScale();
-    
+
         this.globe
             .polygonsData(countries.features.filter((d: any) => d.properties.ISO_A2 !== 'AQ'))
             .polygonAltitude(0.06)
             .polygonCapColor((d: any) => {
-                const value = d.properties.value;
+                const value = d.properties.value ?? 0;
                 return this.colorScale(value);
             })
             .polygonSideColor(() => 'rgba(0, 100, 0, 0.15)')
             .polygonStrokeColor(() => '#111')
-            .polygonLabel(({ properties: d }: any) => {
-                let tooltips = '';
-                let index = 0;
-                for (const key in d) {
-                    const measureValue = this.dataMeasuresValue[index][d.orderIndex];
-                    if (key.startsWith('tooltip')) {
-                        tooltips += `${d[key]}: ${measureValue}<br />`;
-                        index++;
-                    }
-                }
-                return `
-                    <b>${d.ADMIN}</b> <br />
-                    ${tooltips}
-                `;
-            })
+            .polygonLabel(({ properties: d }: any) => this.createTooltip(d))
             .onPolygonHover((hoverD: any) => this.globe
                 .polygonAltitude((d: any) => d === hoverD ? 0.12 : 0.06)
                 .polygonCapColor((d: any) => d === hoverD ? 'white' : this.colorScale(d.properties.value))
             )
             .polygonsTransitionDuration(500);
-    }    
+    }
 
     private updateChoropleth(filteredCountries: any, data: any) {
         const colorScale = d3.scaleSequentialSqrt(d3.interpolateYlOrRd);
 
-        const isNumericData = this.isNumeric(this.dataColors[0]);
-
-        filteredCountries.features.forEach((d: any) => {
-            const countryData = data.find((item: any) => item.name === d.properties.ADMIN);
-            if (countryData) {
-                d.properties.orderIndex = countryData.orderIndex;
-                d.properties.value = this.dataColors[countryData.orderIndex] ?? 0
-                this.dataMeasuresDisplayName.forEach((element, index) => {
-                    d.properties["tooltip" + index] = element;
-                });
-            }
-        });
-
-        // PARTIE A ADAPTER POUR UTILISER this.colorData()
-        this.globe
-            .polygonsData(filteredCountries.features)
-            .polygonCapColor((feat: any) => {
-                const value = feat.properties.value || 0;
-                return colorScale(value);
+        if (this.dataCategories.length > 0) {
+            filteredCountries.features.forEach((d: any) => {
+                const countryData = data.find((item: any) => item.name === d.properties.ADMIN);
+                if (countryData) {
+                    d.properties.orderIndex = countryData.orderIndex;
+                    if (this.dataColors.length > 0) {
+                        d.properties.value = this.dataColors[countryData.orderIndex] ?? 0;
+                    }
+                    this.dataMeasuresDisplayName.forEach((element, index) => {
+                        d.properties["tooltip" + index] = element;
+                    });
+                }
             });
+
+            this.globe
+                .polygonsData(filteredCountries.features)
+                .polygonCapColor((feat: any) => {
+                    if (this.dataColors.length > 0) {
+                        const value = feat.properties.value || 0;
+                        return colorScale(value);
+                    } else {
+                        return 'rgba(0, 100, 0, 0.15)';
+                    }
+                });
+        } else {
+            console.error("Country code data is missing.");
+            this.clearGlobe();
+        }
+    }
+
+    private createTooltip(d: any): string {
+        if (this.dataMeasuresValue.length > 0) {
+            let tooltips = '';
+            let index = 0;
+            for (const key in d) {
+                const measureValue = (this.dataMeasuresValue[index] && this.dataMeasuresValue[index][d.orderIndex] !== undefined)
+                    ? this.dataMeasuresValue[index][d.orderIndex]
+                    : "";
+                if (key.startsWith('tooltip') && measureValue!=="") {
+                    tooltips += `${d[key]}: ${measureValue}<br />`;
+                    index++;
+                }
+            }
+            return `
+                <b>${d.ADMIN}</b> <br />
+                ${tooltips}
+            `;
+        } else {
+            return `<b>${d.ADMIN}</b>`;
+        }
     }
 
     private onResize() {
@@ -192,6 +217,12 @@ export class Visual implements IVisual {
 
         this.globe.width(boundingRect.width).height(boundingRect.height);
         this.globe.pointOfView({ lat: 0, lng: 0, altitude: 2.5 });
+    }
+
+    private clearGlobe() {
+        this.globe
+            .polygonsData([])
+            .polygonCapColor(() => '#FFFFFF');
     }
 
     private filterCountriesByCategories(categories: any) {
@@ -215,7 +246,10 @@ export class Visual implements IVisual {
                 .domain(uniqueCategories);
         }
     }
-    
+
+
+
+
     private isNumeric(value: any): boolean {
         return !isNaN(value) && isFinite(value);
     }
@@ -228,7 +262,7 @@ export class Visual implements IVisual {
         return this.formattingSettingsService.buildFormattingModel(this.formattingSettings);
     }
 
-    
-    
+
+
 }
 
