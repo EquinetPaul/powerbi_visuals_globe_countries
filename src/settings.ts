@@ -65,16 +65,16 @@ class DataPointCardSettings extends FormattingSettingsCard {
         }
     });
 
-    position = new formattingSettings.AutoDropdown({
-        name: "position",
-        displayName: "Position",
-        value: "earth-day"
+    display = new formattingSettings.AutoDropdown({
+        name: "display",
+        displayName: "Display",
+        value: "earth-blue-marble"
     });
 
     name: string = "dataPoint";
     displayName: string = "Globe";
     slices: Array<FormattingSettingsSlice> = [
-        this.position,
+        this.display,
         this.backgroundColor,
         this.nightSkyBackground,
         this.countriesAltitude];

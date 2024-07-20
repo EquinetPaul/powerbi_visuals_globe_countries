@@ -74,10 +74,11 @@ export class Visual implements IVisual {
         this.earthDisplay = {
             "earth-day": imagesJson['earth-day'],
             "earth-night": imagesJson['earth-night'],
-            "night-sky": imagesJson['night-sky']
+            "night-sky": imagesJson['night-sky'],
+            "earth-blue-marble": imagesJson['earth-blue-marble'],
         }
         this.globe = Globe()(this.target)
-            .globeImageUrl(this.earthDisplay["earth-day"])
+            .globeImageUrl(this.earthDisplay["earth-blue-marble"])
             .backgroundColor("#FFFFFF")
             .lineHoverPrecision(0);
 
@@ -183,8 +184,8 @@ export class Visual implements IVisual {
                 legendItem.style.alignItems = 'center';
     
                 const colorBox = document.createElement('div');
-                colorBox.style.width = '20px';
-                colorBox.style.height = '20px';
+                colorBox.style.width = '10px';
+                colorBox.style.height = '10px';
                 colorBox.style.backgroundColor = color;
                 colorBox.style.marginRight = '10px';
     
@@ -206,8 +207,8 @@ export class Visual implements IVisual {
                 legendItem.style.alignItems = 'center';
     
                 const colorBox = document.createElement('div');
-                colorBox.style.width = '20px';
-                colorBox.style.height = '20px';
+                colorBox.style.width = '10px';
+                colorBox.style.height = '10px';
                 colorBox.style.backgroundColor = color;
                 colorBox.style.marginRight = '10px';
     
@@ -231,7 +232,7 @@ export class Visual implements IVisual {
 
         this.globe
             .polygonsData(countries.features.filter((d: any) => d.properties.ISO_A2 !== 'AQ'))
-            .globeImageUrl(this.earthDisplay[this.formattingSettings.dataPointCard.position.value as string])
+            .globeImageUrl(this.earthDisplay[this.formattingSettings.dataPointCard.display.value as string])
             .backgroundColor(this.formattingSettings.dataPointCard.backgroundColor.value.value as string)
             .polygonAltitude(this.formattingSettings.dataPointCard.countriesAltitude.value * 0.01)
             .polygonCapColor((d: any) => {

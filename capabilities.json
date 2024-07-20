@@ -6,7 +6,7 @@
             "kind": "Grouping"
         },
         {
-            "displayName": "Measures (Tooltips)",
+            "displayName": "Tooltips",
             "name": "measure",
             "kind": "Measure"
         },
@@ -54,12 +54,16 @@
                         }
                     }
                 },
-                "position": {
+                "display": {
                     "type": {
                         "enumeration": [
                             {
                                 "value": "earth-day",
                                 "displayName": "Day"
+                            },
+                            {
+                                "value": "earth-blue-marble",
+                                "displayName": "Day 2"
                             },
                             {
                                 "value": "earth-night",
