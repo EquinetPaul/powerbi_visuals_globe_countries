@@ -34,6 +34,7 @@ import VisualUpdateOptions = powerbi.extensibility.visual.VisualUpdateOptions;
 import IVisual = powerbi.extensibility.visual.IVisual;
 import IVisualHost = powerbi.extensibility.visual.IVisualHost;
 import ISelectionManager = powerbi.extensibility.ISelectionManager;
+import IColorPalette = powerbi.extensibility.IColorPalette;
 
 import { VisualFormattingSettingsModel } from "./settings";
 
@@ -66,6 +67,7 @@ export class Visual implements IVisual {
 
     private host: IVisualHost;
     private selectionManager: ISelectionManager;
+    private colorPalette: IColorPalette;
 
     constructor(options: VisualConstructorOptions) {
         this.formattingSettingsService = new FormattingSettingsService();
@@ -73,6 +75,7 @@ export class Visual implements IVisual {
 
         this.host = options.host;
         this.selectionManager = this.host.createSelectionManager();
+        this.colorPalette = options.host.colorPalette;
 
         this.dataMeasuresDisplayName = [];
         this.dataMeasuresValue = [];
@@ -121,6 +124,8 @@ export class Visual implements IVisual {
         this.dataColors = [];
         this.dataCategories = [];
         this.dataCategoriesSelections = [];
+
+        console.log(this.colorPalette)
 
         // Get category data (country names or codes)
         const dataView = options.dataViews[0];
@@ -377,8 +382,12 @@ export class Visual implements IVisual {
                 .domain([minVal, maxVal]);
         } else {
             const uniqueCategories = Array.from(new Set(this.dataColors)) as string[];
-            this.colorScale = d3.scaleOrdinal(d3.schemeCategory10)
-                .domain(uniqueCategories);
+
+            const customColors = this.colorPalette["colors"].map(colorObj => colorObj.value);
+
+            this.colorScale = d3.scaleOrdinal()
+                .domain(uniqueCategories)
+                .range(customColors);
         }
     }
 
