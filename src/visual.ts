@@ -308,7 +308,7 @@ export class Visual implements IVisual {
                 colorBox.style.marginRight = '10px';
 
                 const label = document.createElement('span');
-                label.innerText = this.dataMeasuresDisplayName[index] || category;
+                label.innerText = category;
 
                 legendItem.appendChild(colorBox);
                 legendItem.appendChild(label);
